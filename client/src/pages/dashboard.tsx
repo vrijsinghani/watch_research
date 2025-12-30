@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getAnalysis, getAnalyses, getMarketDataPoints, getResearchProgress, type ResearchProgress } from "@/lib/api";
 import ReactMarkdown from "react-markdown";
+import jsPDF from "jspdf";
 
 export default function Dashboard() {
   const [, params] = useRoute("/dashboard/:id");
@@ -219,6 +220,120 @@ export default function Dashboard() {
 
   const hasData = (marketData?.length || 0) > 0;
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let yPos = 20;
+
+    const addText = (text: string, fontSize: number, isBold: boolean = false, color: number[] = [255, 255, 255]) => {
+      doc.setFontSize(fontSize);
+      doc.setFont("helvetica", isBold ? "bold" : "normal");
+      doc.setTextColor(color[0], color[1], color[2]);
+      const lines = doc.splitTextToSize(text, contentWidth);
+      if (yPos + lines.length * fontSize * 0.5 > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.text(lines, margin, yPos);
+      yPos += lines.length * fontSize * 0.5 + 4;
+    };
+
+    const addSection = (title: string) => {
+      yPos += 6;
+      doc.setFillColor(212, 175, 55);
+      doc.rect(margin, yPos - 4, 3, 12, "F");
+      addText(title, 14, true, [212, 175, 55]);
+      yPos += 2;
+    };
+
+    doc.setFillColor(15, 15, 15);
+    doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+
+    doc.setFillColor(212, 175, 55);
+    doc.rect(0, 0, pageWidth, 45, "F");
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 15, 15);
+    doc.text("CHRONOS", margin, 25);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Market Intelligence Brief", margin, 35);
+    doc.setFontSize(10);
+    doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), pageWidth - margin - 50, 35);
+
+    yPos = 60;
+
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${analysis.brand} ${analysis.model}`, margin, yPos);
+    yPos += 10;
+    if (analysis.reference && analysis.reference !== "N/A") {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Reference: ${analysis.reference}`, margin, yPos);
+      yPos += 10;
+    }
+
+    yPos += 5;
+    if (analysis.executiveSummary) {
+      addSection("Executive Summary");
+      const summaryText = analysis.executiveSummary.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
+      addText(summaryText, 10, false, [200, 200, 200]);
+    }
+
+    if (analysis.conditionPricing && Array.isArray(analysis.conditionPricing) && (analysis.conditionPricing as any[]).length > 0) {
+      addSection("Condition-Based Pricing");
+      (analysis.conditionPricing as any[]).forEach((row) => {
+        const soldRange = row.soldRangeLow && row.soldRangeHigh ? `$${row.soldRangeLow.toLocaleString()} - $${row.soldRangeHigh.toLocaleString()}` : "N/A";
+        const askingRange = row.askingRangeLow && row.askingRangeHigh ? `$${row.askingRangeLow.toLocaleString()} - $${row.askingRangeHigh.toLocaleString()}` : "N/A";
+        addText(`${row.condition}: Sold ${soldRange} | Asking ${askingRange}`, 10, false, [200, 200, 200]);
+      });
+    }
+
+    if (analysis.priceTrends) {
+      addSection("Price Trends");
+      const trendsText = analysis.priceTrends.replace(/\*\*/g, "").replace(/\*\s*/g, "- ").replace(/\n+/g, " ").trim();
+      addText(trendsText, 10, false, [200, 200, 200]);
+    }
+
+    if (analysis.marketAnalysis) {
+      addSection("Market Analysis");
+      const analysisText = analysis.marketAnalysis.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
+      addText(analysisText, 10, false, [200, 200, 200]);
+    }
+
+    if (marketData && marketData.length > 0) {
+      addSection("Market Data Summary");
+      const soldPrices = marketData.filter(d => d.priceType === "Sold").map(d => d.price);
+      const askingPrices = marketData.filter(d => d.priceType === "Asking").map(d => d.price);
+      if (soldPrices.length > 0) {
+        const avgSold = Math.round(soldPrices.reduce((a, b) => a + b, 0) / soldPrices.length);
+        addText(`Average Sold Price: $${avgSold.toLocaleString()} (${soldPrices.length} transactions)`, 10, false, [100, 200, 100]);
+      }
+      if (askingPrices.length > 0) {
+        const avgAsking = Math.round(askingPrices.reduce((a, b) => a + b, 0) / askingPrices.length);
+        addText(`Average Asking Price: $${avgAsking.toLocaleString()} (${askingPrices.length} listings)`, 10, false, [100, 150, 255]);
+      }
+      addText(`Total Data Points: ${marketData.length}`, 10, false, [200, 200, 200]);
+    }
+
+    const pageCount = doc.internal.pages.length - 1;
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
+      doc.text("Generated by Chronos - Luxury Watch Market Intelligence", pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: "center" });
+    }
+
+    const fileName = `Chronos_${analysis.brand}_${analysis.model}_${analysis.reference || "Brief"}.pdf`.replace(/\s+/g, "_");
+    doc.save(fileName);
+  };
+
   return (
     <Layout>
       <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
@@ -252,7 +367,11 @@ export default function Dashboard() {
             <Button variant="outline" className="gap-2 border-border hover:bg-secondary hover:text-foreground">
               <Share2 className="w-4 h-4" /> Share
             </Button>
-            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+            <Button 
+              onClick={exportToPDF}
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+              data-testid="button-export-brief"
+            >
               <Download className="w-4 h-4" /> Export Brief
             </Button>
           </div>
