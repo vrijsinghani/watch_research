@@ -2,9 +2,43 @@
  * Research Report Parser
  * 
  * Extracts structured data from Gemini Deep Research markdown reports.
+ * Enhanced to preserve full provenance and source details.
  */
 
 import type { InsertMarketDataPoint } from "@shared/schema";
+
+export interface PriceStatistics {
+  msrp?: number;
+  avgSoldPrice?: number;
+  medianSoldPrice?: number;
+  soldPriceRangeLow?: number;
+  soldPriceRangeHigh?: number;
+  avgAskingPrice?: number;
+  askingPriceRangeLow?: number;
+  askingPriceRangeHigh?: number;
+  askingVsSoldSpread?: number;
+  recentTrend?: string;
+}
+
+export interface ConditionPricing {
+  condition: string;
+  soldRangeLow?: number;
+  soldRangeHigh?: number;
+  askingRangeLow?: number;
+  askingRangeHigh?: number;
+  notes?: string;
+}
+
+export interface MarketInsights {
+  executiveSummary?: string;
+  priceStatistics?: PriceStatistics;
+  conditionPricing?: ConditionPricing[];
+  priceTrends?: string;
+  marketAnalysis?: string;
+  trend?: string;
+  volatility?: string;
+  averageSoldPrice?: number;
+}
 
 /**
  * Parse a research report and extract market data points
@@ -75,6 +109,7 @@ export function parseResearchReport(
 
 /**
  * Parse a single table row into a market data point
+ * Enhanced to extract more detail from each column
  */
 function parseTableRow(
   cells: string[],
@@ -83,12 +118,15 @@ function parseTableRow(
   priceType: "Sold" | "Asking" | "Unknown"
 ): Omit<InsertMarketDataPoint, "analysisId"> | null {
   try {
-    // Expected format: Date, Price, Condition, Source, Notes
+    // Expected format varies by table type:
+    // Completed Sales: Date, Price, Condition, Source, Seller/Lot, Notes
+    // Current Listings: Date Listed, Asking Price, Condition, Source, Seller/ID, Notes
     const dateStr = cells[0] || "";
     const priceStr = cells[1] || "";
-    const condition = cells[2] || "Unknown";
-    const source = cells[3] || "Deep Research";
-    const notes = cells[4] || "";
+    const conditionRaw = cells[2] || "Unknown";
+    const sourceRaw = cells[3] || "Deep Research";
+    const sellerOrLot = cells[4] || "";
+    const notes = cells[5] || cells[4] || ""; // Notes may be in position 4 or 5
 
     // Parse price - remove currency symbols and commas
     const priceClean = priceStr.replace(/[^\d.]/g, "");
@@ -97,26 +135,24 @@ function parseTableRow(
     }
     const price = parseFloat(priceClean);
     if (isNaN(price) || price < 100) {
-      // Skip invalid or suspiciously low prices
       return null;
     }
 
-    // Parse date
+    // Parse date with better handling
     let saleDate: Date | null = null;
     if (dateStr && !["N/A", "-", "Unknown", ""].includes(dateStr)) {
-      try {
-        // Try various date formats
-        const parsed = new Date(dateStr);
-        if (!isNaN(parsed.getTime())) {
-          saleDate = parsed;
-        }
-      } catch {
-        // Date parsing failed, leave as null
-      }
+      saleDate = parseFlexibleDate(dateStr);
     }
 
-    // Determine source type
-    const sourceType = categorizeSource(source);
+    // Extract year from condition if present (e.g., "Pre-Owned, 2022")
+    const yearMatch = conditionRaw.match(/\b(20\d{2})\b/);
+    const watchYear = yearMatch ? yearMatch[1] : null;
+    
+    // Clean condition - remove year to avoid redundancy
+    const condition = conditionRaw.replace(/,?\s*20\d{2}/, "").trim() || conditionRaw;
+
+    // Parse source - preserve the full detail including "(Sold Item)", "(Private Sale)", etc.
+    const { source, sourceType, seller, listingId, listingUrl } = parseSourceDetail(sourceRaw, sellerOrLot);
 
     return {
       source,
@@ -127,6 +163,10 @@ function parseTableRow(
       condition,
       description: notes,
       location: null,
+      listingUrl,
+      listingId,
+      seller,
+      watchYear,
       saleDate,
       isVerified: false,
     };
@@ -134,6 +174,89 @@ function parseTableRow(
     console.debug(`Error parsing table row: ${cells.join(", ")}`);
     return null;
   }
+}
+
+/**
+ * Parse flexible date formats
+ */
+function parseFlexibleDate(dateStr: string): Date | null {
+  try {
+    // Try standard parsing first
+    let parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+
+    // Handle formats like "May 20, 2024"
+    const monthDayYear = dateStr.match(/(\w+)\s+(\d{1,2}),?\s*(\d{4})/);
+    if (monthDayYear) {
+      parsed = new Date(`${monthDayYear[1]} ${monthDayYear[2]}, ${monthDayYear[3]}`);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    // Handle "Apr 2024" format
+    const monthYear = dateStr.match(/(\w+)\s+(\d{4})/);
+    if (monthYear) {
+      parsed = new Date(`${monthYear[1]} 1, ${monthYear[2]}`);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse source detail with enhanced extraction
+ */
+function parseSourceDetail(sourceRaw: string, sellerOrLot: string): {
+  source: string;
+  sourceType: string;
+  seller: string | null;
+  listingId: string | null;
+  listingUrl: string | null;
+} {
+  let source = sourceRaw;
+  let seller: string | null = null;
+  let listingId: string | null = null;
+  let listingUrl: string | null = null;
+
+  // Extract listing ID patterns
+  const idPatterns = [
+    /ID:\s*(\d+)/i,
+    /Lot\s*#?\s*(\d+)/i,
+    /Item\s*#?\s*(\d+)/i,
+    /#(\d{6,})/,
+  ];
+  
+  for (const pattern of idPatterns) {
+    const match = sourceRaw.match(pattern) || sellerOrLot.match(pattern);
+    if (match) {
+      listingId = match[1];
+      break;
+    }
+  }
+
+  // Extract URL if present
+  const urlMatch = sourceRaw.match(/https?:\/\/[^\s\)]+/) || sellerOrLot.match(/https?:\/\/[^\s\)]+/);
+  if (urlMatch) {
+    listingUrl = urlMatch[0];
+  }
+
+  // Parse seller from sellerOrLot column
+  if (sellerOrLot && !sellerOrLot.match(/^(Lot|ID|Item|#)/i)) {
+    seller = sellerOrLot.replace(/\s*\(.*\)/, "").trim() || null;
+  }
+
+  // Determine source type
+  const sourceType = categorizeSource(source);
+
+  return { source, sourceType, seller, listingId, listingUrl };
 }
 
 /**
@@ -167,63 +290,190 @@ function categorizeSource(source: string): string {
     sourceLower.includes("dealer") ||
     sourceLower.includes("govberg") ||
     sourceLower.includes("jaztime") ||
-    sourceLower.includes("davidsw")
+    sourceLower.includes("davidsw") ||
+    sourceLower.includes("crown & caliber") ||
+    sourceLower.includes("moda watch")
   ) {
     return "Dealer";
+  }
+
+  if (
+    sourceLower.includes("forum") ||
+    sourceLower.includes("private") ||
+    sourceLower.includes("rolexforum") ||
+    sourceLower.includes("watchuseek")
+  ) {
+    return "Private";
   }
 
   return "Other";
 }
 
 /**
- * Extract market insights from the report
+ * Extract comprehensive market insights from the report
  */
-export function extractMarketInsights(report: string): Record<string, any> {
-  const insights: Record<string, any> = {};
+export function extractMarketInsights(report: string): MarketInsights {
+  const insights: MarketInsights = {};
 
-  // Extract average sold price
-  const avgSoldPattern = /[Aa]verage\s*[Ss]old\s*[Pp]rice[:\s]*\$?([\d,]+)/;
-  const avgSoldMatch = report.match(avgSoldPattern);
-  if (avgSoldMatch) {
-    insights.averageSoldPrice = parseFloat(avgSoldMatch[1].replace(/,/g, ""));
+  // Extract executive summary
+  const summarySection = report.split("## Executive Summary")[1];
+  if (summarySection) {
+    const firstSection = summarySection.split("##")[0].trim();
+    insights.executiveSummary = firstSection;
   }
 
-  // Extract median sold price
-  const medianPattern = /[Mm]edian\s*[Ss]old\s*[Pp]rice[:\s]*\$?([\d,]+)/;
-  const medianMatch = report.match(medianPattern);
-  if (medianMatch) {
-    insights.medianSoldPrice = parseFloat(medianMatch[1].replace(/,/g, ""));
+  // Extract price statistics
+  insights.priceStatistics = extractPriceStatistics(report);
+
+  // Extract condition-based pricing
+  insights.conditionPricing = extractConditionPricing(report);
+
+  // Extract price trends narrative
+  const trendsSection = report.split(/## Price Trends?/i)[1];
+  if (trendsSection) {
+    insights.priceTrends = trendsSection.split("##")[0].trim();
   }
 
-  // Extract price range
-  const rangePattern = /[Ss]old\s*[Pp]rice\s*[Rr]ange[:\s]*\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/;
-  const rangeMatch = report.match(rangePattern);
-  if (rangeMatch) {
-    insights.priceRangeLow = parseFloat(rangeMatch[1].replace(/,/g, ""));
-    insights.priceRangeHigh = parseFloat(rangeMatch[2].replace(/,/g, ""));
+  // Extract market analysis
+  const analysisSection = report.split("## Market Analysis")[1];
+  if (analysisSection) {
+    insights.marketAnalysis = analysisSection.split("##")[0].trim();
   }
 
-  // Extract trend
-  const trendPattern = /[Rr]ecent\s*[Tt]rend[:\s]*(increasing|stable|decreasing)/i;
+  // Determine trend
+  const trendPattern = /[Rr]ecent\s*[Tt]rend[:\s]*[*]*\s*(increasing|stable|decreasing|slightly decreasing|slightly increasing)/i;
   const trendMatch = report.match(trendPattern);
   if (trendMatch) {
     insights.trend = trendMatch[1].toLowerCase();
   }
 
-  // Extract executive summary (first paragraph after ## Executive Summary)
-  const summarySection = report.split("## Executive Summary")[1];
-  if (summarySection) {
-    const firstParagraph = summarySection.split("##")[0].trim();
-    insights.executiveSummary = firstParagraph.substring(0, 1000);
+  // Set average sold price from statistics
+  if (insights.priceStatistics?.avgSoldPrice) {
+    insights.averageSoldPrice = insights.priceStatistics.avgSoldPrice;
   }
 
   // Determine volatility based on price spread
-  if (insights.priceRangeLow && insights.priceRangeHigh) {
-    const spread = (insights.priceRangeHigh - insights.priceRangeLow) / insights.priceRangeLow;
+  if (insights.priceStatistics?.soldPriceRangeLow && insights.priceStatistics?.soldPriceRangeHigh) {
+    const spread = (insights.priceStatistics.soldPriceRangeHigh - insights.priceStatistics.soldPriceRangeLow) 
+                   / insights.priceStatistics.soldPriceRangeLow;
     insights.volatility = spread > 0.3 ? "High" : spread > 0.15 ? "Medium" : "Low";
   }
 
   return insights;
+}
+
+/**
+ * Extract price statistics from the report
+ */
+function extractPriceStatistics(report: string): PriceStatistics {
+  const stats: PriceStatistics = {};
+
+  // MSRP
+  const msrpPattern = /(?:MSRP|Retail Price)[:\s]*\*?\*?\$?([\d,]+)/i;
+  const msrpMatch = report.match(msrpPattern);
+  if (msrpMatch) {
+    stats.msrp = parseFloat(msrpMatch[1].replace(/,/g, ""));
+  }
+
+  // Average sold price
+  const avgSoldPattern = /[Aa]verage\s*[Ss]old\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
+  const avgSoldMatch = report.match(avgSoldPattern);
+  if (avgSoldMatch) {
+    stats.avgSoldPrice = parseFloat(avgSoldMatch[1].replace(/,/g, ""));
+  }
+
+  // Median sold price
+  const medianPattern = /[Mm]edian\s*[Ss]old\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
+  const medianMatch = report.match(medianPattern);
+  if (medianMatch) {
+    stats.medianSoldPrice = parseFloat(medianMatch[1].replace(/,/g, ""));
+  }
+
+  // Sold price range
+  const soldRangePattern = /[Ss]old\s*[Pp]rice\s*[Rr]ange[:\s]*~?\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/;
+  const soldRangeMatch = report.match(soldRangePattern);
+  if (soldRangeMatch) {
+    stats.soldPriceRangeLow = parseFloat(soldRangeMatch[1].replace(/,/g, ""));
+    stats.soldPriceRangeHigh = parseFloat(soldRangeMatch[2].replace(/,/g, ""));
+  }
+
+  // Average asking price
+  const avgAskingPattern = /[Aa]verage\s*[Aa]sking\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
+  const avgAskingMatch = report.match(avgAskingPattern);
+  if (avgAskingMatch) {
+    stats.avgAskingPrice = parseFloat(avgAskingMatch[1].replace(/,/g, ""));
+  }
+
+  // Asking price range
+  const askingRangePattern = /[Aa]sking\s*[Pp]rice\s*[Rr]ange[:\s]*~?\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/;
+  const askingRangeMatch = report.match(askingRangePattern);
+  if (askingRangeMatch) {
+    stats.askingPriceRangeLow = parseFloat(askingRangeMatch[1].replace(/,/g, ""));
+    stats.askingPriceRangeHigh = parseFloat(askingRangeMatch[2].replace(/,/g, ""));
+  }
+
+  // Asking vs Sold spread
+  const spreadPattern = /[Aa]sking\s*vs\.?\s*[Ss]old\s*[Ss]pread[:\s]*~?([\d.]+)%/;
+  const spreadMatch = report.match(spreadPattern);
+  if (spreadMatch) {
+    stats.askingVsSoldSpread = parseFloat(spreadMatch[1]);
+  }
+
+  // Recent trend
+  const trendPattern = /[Rr]ecent\s*[Tt]rend[:\s]*[*]*\s*([^\n*]+)/;
+  const trendMatch = report.match(trendPattern);
+  if (trendMatch) {
+    stats.recentTrend = trendMatch[1].trim();
+  }
+
+  return stats;
+}
+
+/**
+ * Extract condition-based pricing table
+ */
+function extractConditionPricing(report: string): ConditionPricing[] {
+  const pricing: ConditionPricing[] = [];
+
+  // Find the condition-based pricing section
+  const conditionSection = report.split(/## Condition[- ]Based Pricing/i)[1];
+  if (!conditionSection) return pricing;
+
+  const sectionContent = conditionSection.split("##")[0];
+  
+  // Extract table rows
+  const tablePattern = /\|[^\n]+\|/g;
+  const tableRows = sectionContent.match(tablePattern) || [];
+
+  for (const row of tableRows) {
+    if (row.includes("---") || row.includes("Condition") && row.includes("Range")) {
+      continue;
+    }
+
+    const cells = row.split("|").map(c => c.trim()).filter(c => c.length > 0);
+    if (cells.length >= 3) {
+      const condition = cells[0].replace(/\*\*/g, "");
+      
+      // Parse sold range
+      const soldRange = cells[1];
+      const soldMatch = soldRange.match(/\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/);
+      
+      // Parse asking range
+      const askingRange = cells[2];
+      const askingMatch = askingRange?.match(/\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/);
+
+      pricing.push({
+        condition,
+        soldRangeLow: soldMatch ? parseFloat(soldMatch[1].replace(/,/g, "")) : undefined,
+        soldRangeHigh: soldMatch ? parseFloat(soldMatch[2].replace(/,/g, "")) : undefined,
+        askingRangeLow: askingMatch ? parseFloat(askingMatch[1].replace(/,/g, "")) : undefined,
+        askingRangeHigh: askingMatch ? parseFloat(askingMatch[2].replace(/,/g, "")) : undefined,
+        notes: cells[3] || undefined,
+      });
+    }
+  }
+
+  return pricing;
 }
 
 /**

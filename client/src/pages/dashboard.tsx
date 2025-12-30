@@ -430,7 +430,12 @@ export default function Dashboard() {
                       ) : marketData && marketData.length > 0 ? (
                         <div className="divide-y divide-border/50">
                           {marketData.map((sale) => (
-                            <div key={sale.id} className="p-4 hover:bg-secondary/30 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-primary">
+                            <div 
+                              key={sale.id} 
+                              className="p-4 hover:bg-secondary/30 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-primary"
+                              onClick={() => sale.listingUrl && window.open(sale.listingUrl, '_blank')}
+                              data-testid={`sale-record-${sale.id}`}
+                            >
                               <div className="flex justify-between items-start mb-1">
                                 <div>
                                   <span className="font-bold font-mono text-foreground block">
@@ -457,10 +462,29 @@ export default function Dashboard() {
                               <div className="flex justify-between items-center mt-2 opacity-60 group-hover:opacity-100 transition-opacity">
                                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                                   <Gavel className="w-3 h-3" />
-                                  {sale.condition || "N/A"}
+                                  <span>{sale.condition || "N/A"}</span>
+                                  {sale.watchYear && <span className="text-primary">({sale.watchYear})</span>}
                                 </div>
-                                <ExternalLink className="w-3 h-3 text-primary" />
+                                <div className="flex items-center gap-2">
+                                  {sale.saleDate && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {new Date(sale.saleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </span>
+                                  )}
+                                  {sale.listingUrl ? (
+                                    <ExternalLink className="w-3 h-3 text-primary" />
+                                  ) : (
+                                    <ExternalLink className="w-3 h-3 text-muted-foreground/30" />
+                                  )}
+                                </div>
                               </div>
+                              
+                              {(sale.seller || sale.listingId) && (
+                                <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground/70">
+                                  {sale.seller && <span>Seller: {sale.seller}</span>}
+                                  {sale.listingId && <span>ID: {sale.listingId}</span>}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

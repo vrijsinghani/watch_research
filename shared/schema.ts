@@ -22,6 +22,12 @@ export const watchAnalyses = pgTable("watch_analyses", {
   analystConsensus: text("analyst_consensus"), // "BUY", "HOLD", "SELL"
   executiveSummary: text("executive_summary"),
   
+  // Structured insights - stored as JSON for rich content
+  priceStatistics: jsonb("price_statistics"), // { avgSold, medianSold, soldRange, avgAsking, askingRange, spread }
+  conditionPricing: jsonb("condition_pricing"), // Array of { condition, soldRange, askingRange }
+  priceTrends: text("price_trends"), // Full narrative of price history
+  marketAnalysis: text("market_analysis"), // Key market factors and drivers
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -41,6 +47,12 @@ export const marketDataPoints = pgTable("market_data_points", {
   condition: text("condition"), // "New/Unworn", "Pre-Owned (Mint)", etc.
   description: text("description"),
   location: text("location"),
+  
+  // Enhanced fields for better provenance
+  listingUrl: text("listing_url"), // Direct link to listing/auction lot
+  listingId: text("listing_id"), // Lot number, item ID, or listing reference
+  seller: text("seller"), // Dealer name, seller username, auction house
+  watchYear: text("watch_year"), // Year of the watch (e.g., "2022", "2021")
   
   saleDate: timestamp("sale_date"),
   isVerified: boolean("is_verified").default(false),

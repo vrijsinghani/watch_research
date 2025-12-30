@@ -58,61 +58,96 @@ const researchProgress = new Map<string, ResearchProgress>();
 function buildResearchPrompt(brand: string, reference: string): string {
   return `Research comprehensive watch sales and listing data for ${brand} ${reference}.
 
+CRITICAL: Provide SPECIFIC, VERIFIABLE data with full provenance. Each data point must include:
+- Exact date (e.g., "May 20, 2024", not just "2024")
+- Source with specificity (e.g., "eBay (Sold Item)", "RolexForums (Private Sale)", "Phillips Geneva Watch Auction XIV")
+- Listing ID, lot number, or reference where available
+- Seller/dealer name when known
+- Watch year/production date if mentioned
+- Direct URL to source when possible
+
 Your research should cover:
 
-1. **Recent Sales Data**: Find actual COMPLETED sale prices from auction houses (Christie's, Sotheby's, Phillips),
-   marketplaces (Chrono24, WatchBox, Hodinkee Shop), and collector forums.
+1. **Recent Sales Data**: Find actual COMPLETED sale prices from:
+   - Auction houses (Christie's, Sotheby's, Phillips, Bonhams) - include lot numbers
+   - Marketplaces (Chrono24, WatchBox, eBay) - include item IDs where possible
+   - Collector forums (RolexForums, WatchUSeek, Omega Forums) - note as private sales
+   - Dealers (Bob's Watches, Crown & Caliber, DavidSW)
 
-2. **Current Market Listings**: Find CURRENT asking prices from active listings on Chrono24, WatchBox,
-   eBay, dealer websites, and other marketplaces.
+2. **Current Market Listings**: Find CURRENT asking prices with listing details from active listings.
 
-3. **Price Trends**: How have prices changed over the past 1-3 years?
+3. **Price Trends**: Detailed price history over 2021-2024 including peak and correction analysis.
 
-4. **Condition Impact**: How does condition (BNIB, unworn, lightly worn, etc.) affect pricing?
+4. **Condition Impact**: How does condition (BNIB, unworn, excellent, good, watch-only) affect pricing?
 
-5. **Special Editions**: Are there special/limited edition variants? How do they compare in value?
-
-6. **Market Insights**: What factors drive demand? Any notable recent events affecting prices?
+5. **Market Insights**: What factors drive demand? Recent events affecting prices?
 
 Format the output as a comprehensive report with the following structure:
 
 ## Executive Summary
-Brief overview of current market status for ${brand} ${reference}
+Detailed overview of current market status for ${brand} ${reference}. Include MSRP, typical market premium, and key takeaways.
 
 ## Completed Sales Table
-| Date | Price (USD) | Condition | Source | Notes |
-|------|-------------|-----------|--------|-------|
-(Include as many ACTUAL COMPLETED sales as you can find with dates)
+| Date | Price (USD) | Condition | Source | Seller/Lot | Notes |
+|------|-------------|-----------|--------|------------|-------|
+(Include 10-15 ACTUAL COMPLETED sales with SPECIFIC dates like "May 20, 2024")
+(Source column should be specific: "eBay (Sold Item)", "Phillips (Lot 123)", "RolexForums (Private Sale)")
+(Include watch year in condition when known: "Pre-Owned, 2022")
+(Notes should include key details: "Full set with box & papers", "Watch only", etc.)
 
 ## Current Listings Table  
-| Date Listed | Asking Price (USD) | Condition | Source | Notes |
-|-------------|-------------------|-----------|--------|-------|
-(Include CURRENT asking prices from active listings)
+| Date Listed | Asking Price (USD) | Condition | Source | Seller/ID | Notes |
+|-------------|-------------------|-----------|--------|-----------|-------|
+(Include 7-10 CURRENT asking prices with specific listing details)
+(Include dealer/seller names: "DavidSW", "Bob's Watches", "Chrono24 ID: 12345678")
 
 ## Price Statistics
-- Average Sold Price: $X
-- Median Sold Price: $X
-- Sold Price Range: $X - $X
-- Average Asking Price: $X
-- Asking Price Range: $X - $X
-- Recent trend: increasing/stable/decreasing
-- Asking vs Sold Spread: X%
+- **Official MSRP:** $X (current retail price)
+- **Average Sold Price:** ~$X (specify timeframe)
+- **Median Sold Price:** ~$X
+- **Sold Price Range:** ~$X - $X
+- **Average Asking Price:** ~$X
+- **Asking Price Range:** ~$X - $X+
+- **Recent Trend:** [Stable/Increasing/Decreasing] with context
+- **Asking vs Sold Spread:** ~X% (what this means for negotiation)
 
 ## Condition-Based Pricing
-| Condition | Typical Sold Range | Typical Asking Range |
-|-----------|-------------------|---------------------|
+| Condition | Typical Sold Range (USD) | Typical Asking Range (USD) | Notes |
+|-----------|--------------------------|----------------------------|-------|
+| BNIB / Unworn | $X - $X | $X - $X | Complete set, current warranty |
+| Excellent / Mint | $X - $X | $X - $X | Light wear, full set |
+| Very Good | $X - $X | $X - $X | Noticeable wear |
+| Watch Only | $X - $X | $X - $X | Missing box/papers |
+
+## Price Trends (2021-2024)
+Provide a detailed narrative of price history including:
+- Pre-boom prices (2020-2021)
+- The peak period (Q1 2022) with specific price levels
+- The correction period (2022-2023)
+- Current stabilization (2024)
+Include specific price points at key moments.
 
 ## Special Editions & Variants
-List any special editions with pricing differences
+List any variants with their relative pricing differences.
 
 ## Market Analysis
-Key insights about supply, demand, and market dynamics.
+Provide 4-5 key factors driving the market:
+1. Brand/heritage factors
+2. Supply constraints
+3. Design/wearability
+4. Investment characteristics
+5. Recent market dynamics
 
 ## Sources
-List all sources used with URLs where available
+List all sources used with URLs:
+- [Source Name](URL) - Description of data obtained
 
-IMPORTANT: Clearly distinguish between COMPLETED SALES (actual transactions) and ASKING PRICES (current listings).
-Prioritize recent data (last 12-18 months) but include historical data for trend analysis.`;
+CRITICAL REQUIREMENTS:
+- Every sale/listing MUST have a specific date, not just a year
+- Source names MUST be specific (include "Sold Item", "Private Sale", lot numbers, IDs)
+- Include watch production year in condition field when available
+- Preserve full detail in notes - don't summarize away important info
+- Include URLs to sources in the Sources section`;
 }
 
 /**
@@ -247,21 +282,26 @@ export async function researchWatch(
 
     // Store results in database
     if (cleanedSales.length > 0) {
-      const dataPointsWithAnalysisId = cleanedSales.map((sale: Omit<InsertMarketDataPoint, "analysisId">) => ({
+      const dataPointsWithAnalysisId: InsertMarketDataPoint[] = cleanedSales.map((sale) => ({
         ...sale,
         analysisId
       }));
       await storage.bulkCreateMarketDataPoints(dataPointsWithAnalysisId);
     }
 
-    // Update the analysis with insights
+    // Update the analysis with comprehensive insights
     await storage.updateWatchAnalysis(analysisId, {
       executiveSummary: marketInsights.executiveSummary || rawReport.split("##")[1]?.substring(0, 500),
       confidenceScore: qaReport.dataQualityScore,
       analystConsensus: marketInsights.trend === "increasing" ? "BUY" : 
                         marketInsights.trend === "decreasing" ? "SELL" : "HOLD",
-      marketPrice: marketInsights.averageSoldPrice,
-      volatility: marketInsights.volatility || "Medium"
+      marketPrice: marketInsights.averageSoldPrice || marketInsights.priceStatistics?.avgSoldPrice,
+      volatility: marketInsights.volatility || "Medium",
+      // Store structured insights as JSON
+      priceStatistics: marketInsights.priceStatistics || null,
+      conditionPricing: marketInsights.conditionPricing || null,
+      priceTrends: marketInsights.priceTrends || null,
+      marketAnalysis: marketInsights.marketAnalysis || null,
     });
 
     // Update research log with results
