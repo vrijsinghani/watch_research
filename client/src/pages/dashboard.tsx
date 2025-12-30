@@ -499,6 +499,189 @@ export default function Dashboard() {
                 </Card>
               </div>
             </div>
+
+            {/* Price Statistics Section */}
+            {analysis.priceStatistics && (
+              <Card className="border-border/50 bg-card" data-testid="price-statistics">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Price Statistics</CardTitle>
+                  <CardDescription>Key pricing metrics from market research</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(analysis.priceStatistics as any).msrp && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Official MSRP</div>
+                        <div className="text-lg font-bold font-mono">${(analysis.priceStatistics as any).msrp.toLocaleString()}</div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).avgSoldPrice && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Avg Sold Price</div>
+                        <div className="text-lg font-bold font-mono text-green-500">${(analysis.priceStatistics as any).avgSoldPrice.toLocaleString()}</div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).medianSoldPrice && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Median Sold Price</div>
+                        <div className="text-lg font-bold font-mono">${(analysis.priceStatistics as any).medianSoldPrice.toLocaleString()}</div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).avgAskingPrice && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Avg Asking Price</div>
+                        <div className="text-lg font-bold font-mono text-blue-400">${(analysis.priceStatistics as any).avgAskingPrice.toLocaleString()}</div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).soldPriceRangeLow && (analysis.priceStatistics as any).soldPriceRangeHigh && (
+                      <div className="p-3 bg-secondary/30 rounded-lg col-span-2">
+                        <div className="text-xs text-muted-foreground">Sold Price Range</div>
+                        <div className="text-lg font-bold font-mono">
+                          ${(analysis.priceStatistics as any).soldPriceRangeLow.toLocaleString()} - ${(analysis.priceStatistics as any).soldPriceRangeHigh.toLocaleString()}
+                        </div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).askingVsSoldSpread && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Asking vs Sold Spread</div>
+                        <div className="text-lg font-bold font-mono">{(analysis.priceStatistics as any).askingVsSoldSpread}%</div>
+                      </div>
+                    )}
+                    {(analysis.priceStatistics as any).recentTrend && (
+                      <div className="p-3 bg-secondary/30 rounded-lg">
+                        <div className="text-xs text-muted-foreground">Recent Trend</div>
+                        <div className="text-lg font-bold">{(analysis.priceStatistics as any).recentTrend}</div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Condition-Based Pricing Table */}
+            {analysis.conditionPricing && Array.isArray(analysis.conditionPricing) && (analysis.conditionPricing as any[]).length > 0 && (
+              <Card className="border-border/50 bg-card" data-testid="condition-pricing">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Condition-Based Pricing</CardTitle>
+                  <CardDescription>Price ranges by watch condition</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50">
+                          <th className="text-left py-2 px-3 text-muted-foreground font-medium">Condition</th>
+                          <th className="text-left py-2 px-3 text-muted-foreground font-medium">Sold Range</th>
+                          <th className="text-left py-2 px-3 text-muted-foreground font-medium">Asking Range</th>
+                          <th className="text-left py-2 px-3 text-muted-foreground font-medium">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(analysis.conditionPricing as any[]).map((row, i) => (
+                          <tr key={i} className="border-b border-border/30 hover:bg-secondary/20">
+                            <td className="py-2 px-3 font-medium">{row.condition}</td>
+                            <td className="py-2 px-3 font-mono text-green-500">
+                              {row.soldRangeLow && row.soldRangeHigh 
+                                ? `$${row.soldRangeLow.toLocaleString()} - $${row.soldRangeHigh.toLocaleString()}`
+                                : '-'}
+                            </td>
+                            <td className="py-2 px-3 font-mono text-blue-400">
+                              {row.askingRangeLow && row.askingRangeHigh 
+                                ? `$${row.askingRangeLow.toLocaleString()} - $${row.askingRangeHigh.toLocaleString()}`
+                                : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-muted-foreground text-xs">{row.notes || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Price Trends Narrative */}
+            {analysis.priceTrends && (
+              <Card className="border-border/50 bg-card" data-testid="price-trends">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Price Trends
+                  </CardTitle>
+                  <CardDescription>Historical price movement analysis</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                      {analysis.priceTrends}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Special Editions & Variants */}
+            {analysis.specialEditions && (
+              <Card className="border-border/50 bg-card" data-testid="special-editions">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Special Editions & Variants</CardTitle>
+                  <CardDescription>Notable versions and their pricing</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                      {analysis.specialEditions}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Market Analysis */}
+            {analysis.marketAnalysis && (
+              <Card className="border-border/50 bg-card" data-testid="market-analysis">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display">Market Analysis</CardTitle>
+                  <CardDescription>Key factors influencing value</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                      {analysis.marketAnalysis}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sources / Bibliography */}
+            {analysis.sources && Array.isArray(analysis.sources) && (analysis.sources as any[]).length > 0 && (
+              <Card className="border-border/50 bg-card/50" data-testid="sources">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Sources</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(analysis.sources as any[]).map((source, i) => (
+                      source.url ? (
+                        <a 
+                          key={i}
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary/70 hover:text-primary underline-offset-2 hover:underline flex items-center gap-1"
+                        >
+                          {source.name}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span key={i} className="text-xs text-muted-foreground">{source.name}</span>
+                      )
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
       </div>

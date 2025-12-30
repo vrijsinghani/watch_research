@@ -381,66 +381,121 @@ export function extractMarketInsights(report: string): MarketInsights {
 
 /**
  * Extract price statistics from the report
+ * Handles markdown formatting like **$9,850** and ~$10,000
  */
 function extractPriceStatistics(report: string): PriceStatistics {
   const stats: PriceStatistics = {};
 
-  // MSRP
-  const msrpPattern = /(?:MSRP|Retail Price)[:\s]*\*?\*?\$?([\d,]+)/i;
-  const msrpMatch = report.match(msrpPattern);
-  if (msrpMatch) {
-    stats.msrp = parseFloat(msrpMatch[1].replace(/,/g, ""));
+  // Helper to extract price from markdown text
+  const extractPrice = (text: string): number | null => {
+    const match = text.match(/\$?([\d,]+)/);
+    return match ? parseFloat(match[1].replace(/,/g, "")) : null;
+  };
+
+  // MSRP - handles "MSRP was approximately **$6,000**" or "MSRP: $10,250"
+  const msrpPatterns = [
+    /(?:MSRP|Official MSRP|Retail Price)[^$]*\*?\*?\$?([\d,]+)/i,
+    /\*\*\$?([\d,]+)\s*USD?\*\*[^*]*(?:MSRP|retail)/i,
+  ];
+  for (const pattern of msrpPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.msrp = parseFloat(match[1].replace(/,/g, ""));
+      break;
+    }
   }
 
-  // Average sold price
-  const avgSoldPattern = /[Aa]verage\s*[Ss]old\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
-  const avgSoldMatch = report.match(avgSoldPattern);
-  if (avgSoldMatch) {
-    stats.avgSoldPrice = parseFloat(avgSoldMatch[1].replace(/,/g, ""));
+  // Average sold price - handles "**~$9,850**" format
+  const avgSoldPatterns = [
+    /[Aa]verage\s*[Ss]old\s*[Pp]rice[^*$]*\*?\*?~?\$?([\d,]+)/,
+    /[Aa]vg\s*[Ss]old[^*$]*\*?\*?~?\$?([\d,]+)/,
+  ];
+  for (const pattern of avgSoldPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.avgSoldPrice = parseFloat(match[1].replace(/,/g, ""));
+      break;
+    }
   }
 
   // Median sold price
-  const medianPattern = /[Mm]edian\s*[Ss]old\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
-  const medianMatch = report.match(medianPattern);
-  if (medianMatch) {
-    stats.medianSoldPrice = parseFloat(medianMatch[1].replace(/,/g, ""));
+  const medianPatterns = [
+    /[Mm]edian\s*[Ss]old\s*[Pp]rice[^*$]*\*?\*?~?\$?([\d,]+)/,
+  ];
+  for (const pattern of medianPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.medianSoldPrice = parseFloat(match[1].replace(/,/g, ""));
+      break;
+    }
   }
 
-  // Sold price range
-  const soldRangePattern = /[Ss]old\s*[Pp]rice\s*[Rr]ange[:\s]*~?\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/;
-  const soldRangeMatch = report.match(soldRangePattern);
-  if (soldRangeMatch) {
-    stats.soldPriceRangeLow = parseFloat(soldRangeMatch[1].replace(/,/g, ""));
-    stats.soldPriceRangeHigh = parseFloat(soldRangeMatch[2].replace(/,/g, ""));
+  // Sold price range - handles "**~$8,200** ... to **~$11,750**"
+  const soldRangePatterns = [
+    /[Ss]old\s*[Pp]rice\s*[Rr]ange[^:]*:[^$]*~?\*?\*?\$?([\d,]+)[^$]*(?:to|[-–])[^$]*~?\*?\*?\$?([\d,]+)/,
+    /sold[^$]*\*?\*?~?\$?([\d,]+)\*?\*?[^$]*to[^$]*\*?\*?~?\$?([\d,]+)/i,
+  ];
+  for (const pattern of soldRangePatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.soldPriceRangeLow = parseFloat(match[1].replace(/,/g, ""));
+      stats.soldPriceRangeHigh = parseFloat(match[2].replace(/,/g, ""));
+      break;
+    }
   }
 
   // Average asking price
-  const avgAskingPattern = /[Aa]verage\s*[Aa]sking\s*[Pp]rice[:\s]*~?\$?([\d,]+)/;
-  const avgAskingMatch = report.match(avgAskingPattern);
-  if (avgAskingMatch) {
-    stats.avgAskingPrice = parseFloat(avgAskingMatch[1].replace(/,/g, ""));
+  const avgAskingPatterns = [
+    /[Aa]verage\s*[Aa]sking\s*[Pp]rice[^*$]*\*?\*?~?\$?([\d,]+)/,
+  ];
+  for (const pattern of avgAskingPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.avgAskingPrice = parseFloat(match[1].replace(/,/g, ""));
+      break;
+    }
   }
 
   // Asking price range
-  const askingRangePattern = /[Aa]sking\s*[Pp]rice\s*[Rr]ange[:\s]*~?\$?([\d,]+)\s*[-–]\s*\$?([\d,]+)/;
-  const askingRangeMatch = report.match(askingRangePattern);
-  if (askingRangeMatch) {
-    stats.askingPriceRangeLow = parseFloat(askingRangeMatch[1].replace(/,/g, ""));
-    stats.askingPriceRangeHigh = parseFloat(askingRangeMatch[2].replace(/,/g, ""));
+  const askingRangePatterns = [
+    /[Aa]sking\s*[Pp]rice\s*[Rr]ange[^:]*:[^$]*~?\*?\*?\$?([\d,]+)[^$]*(?:to|[-–])[^$]*~?\*?\*?\$?([\d,]+)/,
+  ];
+  for (const pattern of askingRangePatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.askingPriceRangeLow = parseFloat(match[1].replace(/,/g, ""));
+      stats.askingPriceRangeHigh = parseFloat(match[2].replace(/,/g, ""));
+      break;
+    }
   }
 
-  // Asking vs Sold spread
-  const spreadPattern = /[Aa]sking\s*vs\.?\s*[Ss]old\s*[Ss]pread[:\s]*~?([\d.]+)%/;
-  const spreadMatch = report.match(spreadPattern);
-  if (spreadMatch) {
-    stats.askingVsSoldSpread = parseFloat(spreadMatch[1]);
+  // Asking vs Sold spread - handles "**~10-15%**"
+  const spreadPatterns = [
+    /[Aa]sking\s*vs\.?\s*[Ss]old\s*[Ss]pread[^*\d]*\*?\*?~?([\d]+)(?:\s*[-–]\s*(\d+))?%/,
+  ];
+  for (const pattern of spreadPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      // If range like "10-15%", take average
+      if (match[2]) {
+        stats.askingVsSoldSpread = (parseFloat(match[1]) + parseFloat(match[2])) / 2;
+      } else {
+        stats.askingVsSoldSpread = parseFloat(match[1]);
+      }
+      break;
+    }
   }
 
-  // Recent trend
-  const trendPattern = /[Rr]ecent\s*[Tt]rend[:\s]*[*]*\s*([^\n*]+)/;
-  const trendMatch = report.match(trendPattern);
-  if (trendMatch) {
-    stats.recentTrend = trendMatch[1].trim();
+  // Recent trend - handles "**Stable**. After the..."
+  const trendPatterns = [
+    /[Rr]ecent\s*[Tt]rend[:\s]*\*?\*?([A-Za-z]+)\*?\*?/,
+  ];
+  for (const pattern of trendPatterns) {
+    const match = report.match(pattern);
+    if (match) {
+      stats.recentTrend = match[1].trim();
+      break;
+    }
   }
 
   return stats;
