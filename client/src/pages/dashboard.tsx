@@ -223,111 +223,165 @@ export default function Dashboard() {
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     const contentWidth = pageWidth - margin * 2;
     let yPos = 20;
+    let currentPage = 1;
 
-    const addText = (text: string, fontSize: number, isBold: boolean = false, color: number[] = [255, 255, 255]) => {
+    const addPageBackground = () => {
+      doc.setFillColor(18, 18, 20);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+    };
+
+    const checkPageBreak = (neededSpace: number) => {
+      if (yPos + neededSpace > pageHeight - 25) {
+        doc.addPage();
+        currentPage++;
+        addPageBackground();
+        yPos = 25;
+      }
+    };
+
+    const addText = (text: string, fontSize: number, isBold: boolean = false, color: number[] = [255, 255, 255], lineHeight: number = 1.4) => {
       doc.setFontSize(fontSize);
       doc.setFont("helvetica", isBold ? "bold" : "normal");
       doc.setTextColor(color[0], color[1], color[2]);
       const lines = doc.splitTextToSize(text, contentWidth);
-      if (yPos + lines.length * fontSize * 0.5 > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage();
-        yPos = 20;
-      }
+      const textHeight = lines.length * fontSize * 0.35 * lineHeight;
+      checkPageBreak(textHeight);
       doc.text(lines, margin, yPos);
-      yPos += lines.length * fontSize * 0.5 + 4;
+      yPos += textHeight + 3;
     };
 
     const addSection = (title: string) => {
-      yPos += 6;
+      checkPageBreak(25);
+      yPos += 8;
       doc.setFillColor(212, 175, 55);
-      doc.rect(margin, yPos - 4, 3, 12, "F");
-      addText(title, 14, true, [212, 175, 55]);
-      yPos += 2;
+      doc.rect(margin, yPos - 5, 4, 14, "F");
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(212, 175, 55);
+      doc.text(title, margin + 10, yPos + 5);
+      yPos += 18;
     };
 
-    doc.setFillColor(15, 15, 15);
-    doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+    addPageBackground();
 
     doc.setFillColor(212, 175, 55);
-    doc.rect(0, 0, pageWidth, 45, "F");
-    doc.setFontSize(24);
+    doc.rect(0, 0, pageWidth, 50, "F");
+    
+    doc.setFontSize(28);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(15, 15, 15);
-    doc.text("CHRONOS", margin, 25);
-    doc.setFontSize(10);
+    doc.setTextColor(18, 18, 20);
+    doc.text("CHRONOS", margin, 28);
+    
+    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text("Market Intelligence Brief", margin, 35);
+    doc.setTextColor(50, 50, 50);
+    doc.text("Market Intelligence Brief", margin, 40);
+    
     doc.setFontSize(10);
-    doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), pageWidth - margin - 50, 35);
+    doc.setTextColor(50, 50, 50);
+    const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    doc.text(dateStr, pageWidth - margin - doc.getTextWidth(dateStr), 40);
 
-    yPos = 60;
+    yPos = 70;
 
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
     doc.text(`${analysis.brand} ${analysis.model}`, margin, yPos);
-    yPos += 10;
+    yPos += 12;
+    
     if (analysis.reference && analysis.reference !== "N/A") {
-      doc.setFontSize(12);
+      doc.setFontSize(13);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(160, 160, 160);
+      doc.setTextColor(140, 140, 140);
       doc.text(`Reference: ${analysis.reference}`, margin, yPos);
-      yPos += 10;
+      yPos += 12;
     }
 
     yPos += 5;
+    doc.setDrawColor(212, 175, 55);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 15;
+
     if (analysis.executiveSummary) {
       addSection("Executive Summary");
       const summaryText = analysis.executiveSummary.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
-      addText(summaryText, 10, false, [200, 200, 200]);
+      addText(summaryText, 10, false, [190, 190, 190]);
     }
 
     if (analysis.conditionPricing && Array.isArray(analysis.conditionPricing) && (analysis.conditionPricing as any[]).length > 0) {
       addSection("Condition-Based Pricing");
       (analysis.conditionPricing as any[]).forEach((row) => {
+        checkPageBreak(20);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(255, 255, 255);
+        doc.text(row.condition, margin + 10, yPos);
+        yPos += 6;
+        
         const soldRange = row.soldRangeLow && row.soldRangeHigh ? `$${row.soldRangeLow.toLocaleString()} - $${row.soldRangeHigh.toLocaleString()}` : "N/A";
         const askingRange = row.askingRangeLow && row.askingRangeHigh ? `$${row.askingRangeLow.toLocaleString()} - $${row.askingRangeHigh.toLocaleString()}` : "N/A";
-        addText(`${row.condition}: Sold ${soldRange} | Asking ${askingRange}`, 10, false, [200, 200, 200]);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 200, 100);
+        doc.text(`Sold: ${soldRange}`, margin + 10, yPos);
+        doc.setTextColor(100, 150, 255);
+        doc.text(`Asking: ${askingRange}`, margin + 90, yPos);
+        yPos += 10;
       });
     }
 
     if (analysis.priceTrends) {
       addSection("Price Trends");
-      const trendsText = analysis.priceTrends.replace(/\*\*/g, "").replace(/\*\s*/g, "- ").replace(/\n+/g, " ").trim();
-      addText(trendsText, 10, false, [200, 200, 200]);
+      const trendsText = analysis.priceTrends.replace(/\*\*/g, "").replace(/\*\s*/g, "").replace(/\n+/g, " ").trim();
+      addText(trendsText, 10, false, [190, 190, 190]);
     }
 
     if (analysis.marketAnalysis) {
       addSection("Market Analysis");
       const analysisText = analysis.marketAnalysis.replace(/\*\*/g, "").replace(/\n+/g, " ").trim();
-      addText(analysisText, 10, false, [200, 200, 200]);
+      addText(analysisText, 10, false, [190, 190, 190]);
     }
 
     if (marketData && marketData.length > 0) {
       addSection("Market Data Summary");
       const soldPrices = marketData.filter(d => d.priceType === "Sold").map(d => d.price);
       const askingPrices = marketData.filter(d => d.priceType === "Asking").map(d => d.price);
+      
+      checkPageBreak(40);
+      doc.setFillColor(30, 30, 35);
+      doc.roundedRect(margin, yPos - 5, contentWidth, 35, 3, 3, "F");
+      
       if (soldPrices.length > 0) {
         const avgSold = Math.round(soldPrices.reduce((a, b) => a + b, 0) / soldPrices.length);
-        addText(`Average Sold Price: $${avgSold.toLocaleString()} (${soldPrices.length} transactions)`, 10, false, [100, 200, 100]);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 200, 100);
+        doc.text(`Avg Sold: $${avgSold.toLocaleString()} (${soldPrices.length} sales)`, margin + 8, yPos + 8);
       }
       if (askingPrices.length > 0) {
         const avgAsking = Math.round(askingPrices.reduce((a, b) => a + b, 0) / askingPrices.length);
-        addText(`Average Asking Price: $${avgAsking.toLocaleString()} (${askingPrices.length} listings)`, 10, false, [100, 150, 255]);
+        doc.setTextColor(100, 150, 255);
+        doc.text(`Avg Asking: $${avgAsking.toLocaleString()} (${askingPrices.length} listings)`, margin + 8, yPos + 18);
       }
-      addText(`Total Data Points: ${marketData.length}`, 10, false, [200, 200, 200]);
+      doc.setTextColor(160, 160, 160);
+      doc.text(`Total Data Points: ${marketData.length}`, margin + 8, yPos + 28);
+      yPos += 45;
     }
 
-    const pageCount = doc.internal.pages.length - 1;
-    for (let i = 1; i <= pageCount; i++) {
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
-      doc.text("Generated by Chronos - Luxury Watch Market Intelligence", pageWidth / 2, doc.internal.pageSize.getHeight() - 5, { align: "center" });
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 12, { align: "center" });
+      doc.setTextColor(212, 175, 55);
+      doc.text("CHRONOS", pageWidth / 2, pageHeight - 6, { align: "center" });
     }
 
     const fileName = `Chronos_${analysis.brand}_${analysis.model}_${analysis.reference || "Brief"}.pdf`.replace(/\s+/g, "_");
