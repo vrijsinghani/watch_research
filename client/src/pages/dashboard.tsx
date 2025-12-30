@@ -220,6 +220,15 @@ export default function Dashboard() {
 
   const hasData = (marketData?.length || 0) > 0;
 
+  // Calculate global market price from sold transactions if not in analysis
+  const calculatedMarketPrice = (() => {
+    if (analysis?.marketPrice) return analysis.marketPrice;
+    if (!marketData || marketData.length === 0) return null;
+    const soldPrices = marketData.filter(d => d.priceType === "Sold").map(d => d.price);
+    if (soldPrices.length === 0) return null;
+    return Math.round(soldPrices.reduce((a, b) => a + b, 0) / soldPrices.length);
+  })();
+
   const exportToPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -520,8 +529,8 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard 
                 title="Global Market Price" 
-                value={analysis.marketPrice ? `$${analysis.marketPrice.toLocaleString()}` : "N/A"} 
-                subtext="Weighted avg across all sources"
+                value={calculatedMarketPrice ? `$${calculatedMarketPrice.toLocaleString()}` : "N/A"} 
+                subtext="Avg sold price across all sources"
                 icon={Globe}
               />
               <MetricCard 
