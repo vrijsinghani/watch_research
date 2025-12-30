@@ -7,6 +7,7 @@ import {
   insertDataSourceSchema 
 } from "@shared/schema";
 import { deepResearchData } from "../client/src/lib/mock-data";
+import { researchWatch, getResearchProgress } from "./services/deep-research.js";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -146,6 +147,64 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to toggle data source" });
+    }
+  });
+
+  // ============================================================
+  // DEEP RESEARCH ENDPOINTS
+  // ============================================================
+
+  // Trigger deep research for a watch analysis
+  app.post("/api/analyses/:id/research", async (req, res) => {
+    try {
+      const analysis = await storage.getWatchAnalysis(req.params.id);
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      // Get API key from environment (secure method)
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: "Gemini API key not configured. Please set GEMINI_API_KEY in your environment." 
+        });
+      }
+
+      // Start research in background (don't await - it takes 2-10 mins)
+      researchWatch(
+        analysis.id,
+        analysis.brand,
+        analysis.reference,
+        apiKey
+      ).catch(err => {
+        console.error(`Research failed for ${analysis.id}:`, err);
+      });
+
+      res.json({ 
+        message: "Research started",
+        analysisId: analysis.id,
+        estimatedTime: "2-10 minutes"
+      });
+    } catch (error) {
+      console.error("Research error:", error);
+      res.status(500).json({ error: "Failed to start research" });
+    }
+  });
+
+  // Get research progress
+  app.get("/api/analyses/:id/research/progress", async (req, res) => {
+    try {
+      const progress = getResearchProgress(req.params.id);
+      if (!progress) {
+        return res.json({ 
+          status: "not_started",
+          progress: 0,
+          message: "No research in progress"
+        });
+      }
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get research progress" });
     }
   });
 
