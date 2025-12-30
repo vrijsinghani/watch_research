@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAnalysis, getAnalyses, getMarketDataPoints, getResearchProgress, type ResearchProgress } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
 
 export default function Dashboard() {
   const [, params] = useRoute("/dashboard/:id");
@@ -611,10 +612,8 @@ export default function Dashboard() {
                   <CardDescription>Historical price movement analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                      {analysis.priceTrends}
-                    </div>
+                  <div className="prose prose-sm prose-invert max-w-none [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_li]:text-muted-foreground [&_p]:text-muted-foreground [&_p]:mb-3">
+                    <ReactMarkdown>{analysis.priceTrends}</ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
@@ -628,10 +627,8 @@ export default function Dashboard() {
                   <CardDescription>Notable versions and their pricing</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                      {analysis.specialEditions}
-                    </div>
+                  <div className="prose prose-sm prose-invert max-w-none [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_li]:text-muted-foreground [&_p]:text-muted-foreground [&_p]:mb-3">
+                    <ReactMarkdown>{analysis.specialEditions}</ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
@@ -645,10 +642,8 @@ export default function Dashboard() {
                   <CardDescription>Key factors influencing value</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                      {analysis.marketAnalysis}
-                    </div>
+                  <div className="prose prose-sm prose-invert max-w-none [&_strong]:text-foreground [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_li]:text-muted-foreground [&_p]:text-muted-foreground [&_p]:mb-3">
+                    <ReactMarkdown>{analysis.marketAnalysis}</ReactMarkdown>
                   </div>
                 </CardContent>
               </Card>
