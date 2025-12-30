@@ -123,7 +123,7 @@ export default function HistoryPage() {
                         {hasData ? (
                           <div className="text-right mr-2">
                             <div className="text-sm font-medium">
-                              {analysis.marketPrice ? `$${analysis.marketPrice.toLocaleString()}` : "N/A"}
+                              {analysis.marketPrice && analysis.marketPrice > 100 ? `$${analysis.marketPrice.toLocaleString()}` : "N/A"}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               Confidence: {analysis.confidenceScore}%
