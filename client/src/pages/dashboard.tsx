@@ -2,10 +2,11 @@ import Layout from "@/components/layout";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
 import { ListingFeed } from "@/components/listing-feed";
+import { DeepResearchFeed } from "@/components/deep-research-feed";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share2, TrendingUp, AlertTriangle, Activity, DollarSign } from "lucide-react";
+import { Download, Share2, TrendingUp, AlertTriangle, Activity, DollarSign, Bot } from "lucide-react";
 
 export default function Dashboard() {
   return (
@@ -61,52 +62,69 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Main Analysis Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <PriceChart />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-card border border-border/50 rounded-lg p-6">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Investment Outlook</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-foreground">6-Month Forecast</span>
-                    <span className="text-green-500 font-medium">+5.2%</span>
+        {/* Tabs for Analysis Mode */}
+        <Tabs defaultValue="standard" className="space-y-6">
+          <TabsList className="bg-secondary/50 border border-border/50 p-1">
+            <TabsTrigger value="standard" className="data-[state=active]:bg-card data-[state=active]:text-primary">Standard Analysis</TabsTrigger>
+            <TabsTrigger value="deep-research" className="data-[state=active]:bg-card data-[state=active]:text-primary gap-2">
+              <Bot className="w-4 h-4" />
+              Deep Research Agent
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="standard" className="space-y-6 animate-in fade-in-50 duration-500">
+            {/* Main Analysis Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <PriceChart />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card border border-border/50 rounded-lg p-6">
+                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Investment Outlook</h3>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-foreground">6-Month Forecast</span>
+                        <span className="text-green-500 font-medium">+5.2%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 w-[65%]" />
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Market sentiment remains bullish due to limited supply of white gold variants. Dealers are accumulating inventory.
+                      </p>
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 w-[65%]" />
+
+                  <div className="bg-card border border-border/50 rounded-lg p-6">
+                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Condition Impact</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">New / Unworn</span>
+                        <span className="text-foreground font-medium">$45,900</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Mint Condition</span>
+                        <span className="text-foreground font-medium">$44,200</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Good Condition</span>
+                        <span className="text-foreground font-medium">$41,500</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Market sentiment remains bullish due to limited supply of white gold variants. Dealers are accumulating inventory.
-                  </p>
                 </div>
               </div>
 
-              <div className="bg-card border border-border/50 rounded-lg p-6">
-                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Condition Impact</h3>
-                 <div className="space-y-3">
-                   <div className="flex justify-between text-sm">
-                     <span className="text-muted-foreground">New / Unworn</span>
-                     <span className="text-foreground font-medium">$45,900</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-muted-foreground">Mint Condition</span>
-                     <span className="text-foreground font-medium">$44,200</span>
-                   </div>
-                   <div className="flex justify-between text-sm">
-                     <span className="text-muted-foreground">Good Condition</span>
-                     <span className="text-foreground font-medium">$41,500</span>
-                   </div>
-                 </div>
+              <div className="lg:col-span-1">
+                <ListingFeed />
               </div>
             </div>
-          </div>
+          </TabsContent>
 
-          <div className="lg:col-span-1">
-            <ListingFeed />
-          </div>
-        </div>
+          <TabsContent value="deep-research" className="animate-in fade-in-50 duration-500">
+             <DeepResearchFeed />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
