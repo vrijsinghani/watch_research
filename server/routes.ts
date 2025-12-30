@@ -275,5 +275,40 @@ export async function registerRoutes(
     }
   });
 
+  // Backfill market prices for existing analyses
+  app.post("/api/admin/backfill-prices", async (req, res) => {
+    try {
+      const analyses = await storage.getAllWatchAnalyses();
+      const results: { id: string; brand: string; model: string; oldPrice: number | null; newPrice: number | null }[] = [];
+
+      for (const analysis of analyses) {
+        const dataPoints = await storage.getMarketDataPoints(analysis.id);
+        const soldPrices = dataPoints
+          .filter(d => d.priceType === "Sold" && d.price > 0)
+          .map(d => d.price);
+        
+        const newPrice = soldPrices.length > 0 
+          ? Math.round(soldPrices.reduce((a, b) => a + b, 0) / soldPrices.length)
+          : null;
+
+        if (newPrice && newPrice !== analysis.marketPrice) {
+          await storage.updateWatchAnalysis(analysis.id, { marketPrice: newPrice });
+          results.push({
+            id: analysis.id,
+            brand: analysis.brand,
+            model: analysis.model,
+            oldPrice: analysis.marketPrice,
+            newPrice
+          });
+        }
+      }
+
+      res.json({ message: "Backfill complete", updated: results.length, results });
+    } catch (error) {
+      console.error("Backfill error:", error);
+      res.status(500).json({ error: "Failed to backfill prices" });
+    }
+  });
+
   return httpServer;
 }

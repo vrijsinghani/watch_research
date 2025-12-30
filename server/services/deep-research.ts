@@ -289,13 +289,21 @@ export async function researchWatch(
       await storage.bulkCreateMarketDataPoints(dataPointsWithAnalysisId);
     }
 
+    // Calculate market price from actual sold transactions
+    const soldPrices = cleanedSales
+      .filter(sale => sale.priceType === "Sold" && sale.price > 0)
+      .map(sale => sale.price);
+    const calculatedMarketPrice = soldPrices.length > 0 
+      ? Math.round(soldPrices.reduce((a, b) => a + b, 0) / soldPrices.length) 
+      : (marketInsights.averageSoldPrice || marketInsights.priceStatistics?.avgSoldPrice || null);
+
     // Update the analysis with comprehensive insights
     await storage.updateWatchAnalysis(analysisId, {
       executiveSummary: marketInsights.executiveSummary || rawReport.split("##")[1]?.substring(0, 500),
       confidenceScore: qaReport.dataQualityScore,
       analystConsensus: marketInsights.trend === "increasing" ? "BUY" : 
                         marketInsights.trend === "decreasing" ? "SELL" : "HOLD",
-      marketPrice: marketInsights.averageSoldPrice || marketInsights.priceStatistics?.avgSoldPrice,
+      marketPrice: calculatedMarketPrice,
       volatility: marketInsights.volatility || "Medium",
       // Store structured insights as JSON
       priceStatistics: marketInsights.priceStatistics || null,
