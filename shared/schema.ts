@@ -27,6 +27,8 @@ export const watchAnalyses = pgTable("watch_analyses", {
   conditionPricing: jsonb("condition_pricing"), // Array of { condition, soldRange, askingRange }
   priceTrends: text("price_trends"), // Full narrative of price history
   marketAnalysis: text("market_analysis"), // Key market factors and drivers
+  specialEditions: text("special_editions"), // Special editions and variants info
+  sources: jsonb("sources"), // Array of { name, url, description } bibliography
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

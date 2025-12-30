@@ -302,6 +302,8 @@ export async function researchWatch(
       conditionPricing: marketInsights.conditionPricing || null,
       priceTrends: marketInsights.priceTrends || null,
       marketAnalysis: marketInsights.marketAnalysis || null,
+      specialEditions: marketInsights.specialEditions || null,
+      sources: marketInsights.sources || null,
     });
 
     // Update research log with results

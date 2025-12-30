@@ -29,12 +29,20 @@ export interface ConditionPricing {
   notes?: string;
 }
 
+export interface SourceReference {
+  name: string;
+  url?: string;
+  description?: string;
+}
+
 export interface MarketInsights {
   executiveSummary?: string;
   priceStatistics?: PriceStatistics;
   conditionPricing?: ConditionPricing[];
   priceTrends?: string;
   marketAnalysis?: string;
+  specialEditions?: string;
+  sources?: SourceReference[];
   trend?: string;
   volatility?: string;
   averageSoldPrice?: number;
@@ -340,6 +348,15 @@ export function extractMarketInsights(report: string): MarketInsights {
     insights.marketAnalysis = analysisSection.split("##")[0].trim();
   }
 
+  // Extract special editions and variants
+  const specialSection = report.split(/## Special Editions?[^\n]*/i)[1];
+  if (specialSection) {
+    insights.specialEditions = specialSection.split("##")[0].trim();
+  }
+
+  // Extract sources/bibliography
+  insights.sources = extractSources(report);
+
   // Determine trend
   const trendPattern = /[Rr]ecent\s*[Tt]rend[:\s]*[*]*\s*(increasing|stable|decreasing|slightly decreasing|slightly increasing)/i;
   const trendMatch = report.match(trendPattern);
@@ -474,6 +491,51 @@ function extractConditionPricing(report: string): ConditionPricing[] {
   }
 
   return pricing;
+}
+
+/**
+ * Extract sources/bibliography from the report
+ */
+function extractSources(report: string): SourceReference[] {
+  const sources: SourceReference[] = [];
+
+  // Find the sources section
+  const sourcesSection = report.split(/## Sources?|## Bibliography|## References/i)[1];
+  if (!sourcesSection) return sources;
+
+  const sectionContent = sourcesSection.split("##")[0];
+  
+  // Match markdown links: [Name](url) or bullet points with URLs
+  const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = linkPattern.exec(sectionContent)) !== null) {
+    sources.push({
+      name: match[1].trim(),
+      url: match[2].trim(),
+    });
+  }
+
+  // Also match bullet points with plain text descriptions
+  const bulletPattern = /\*\s+([^\n]+)/g;
+  while ((match = bulletPattern.exec(sectionContent)) !== null) {
+    const line = match[1];
+    // Skip if we already extracted as markdown link
+    if (line.includes("](")) continue;
+    
+    // Try to extract URL from plain text
+    const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+    const name = line.replace(/(https?:\/\/[^\s]+)/, "").replace(/[-–:]\s*$/, "").trim();
+    
+    if (name) {
+      sources.push({
+        name,
+        url: urlMatch ? urlMatch[1] : undefined,
+        description: line,
+      });
+    }
+  }
+
+  return sources;
 }
 
 /**
