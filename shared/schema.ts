@@ -65,6 +65,23 @@ export const dataSources = pgTable("data_sources", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Research Logs - Store prompts and responses for debugging
+export const researchLogs = pgTable("research_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  analysisId: varchar("analysis_id").references(() => watchAnalyses.id, { onDelete: "cascade" }).notNull(),
+  
+  status: text("status").notNull(), // "started", "completed", "failed"
+  prompt: text("prompt").notNull(),
+  rawResponse: text("raw_response"),
+  
+  extractedCount: integer("extracted_count").default(0),
+  durationSeconds: real("duration_seconds"),
+  errorMessage: text("error_message"),
+  
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Zod schemas for validation
 export const insertWatchAnalysisSchema = createInsertSchema(watchAnalyses).omit({
   id: true,
@@ -83,6 +100,11 @@ export const insertDataSourceSchema = createInsertSchema(dataSources).omit({
   updatedAt: true,
 });
 
+export const insertResearchLogSchema = createInsertSchema(researchLogs).omit({
+  id: true,
+  startedAt: true,
+});
+
 // Types
 export type InsertWatchAnalysis = z.infer<typeof insertWatchAnalysisSchema>;
 export type WatchAnalysis = typeof watchAnalyses.$inferSelect;
@@ -92,3 +114,6 @@ export type MarketDataPoint = typeof marketDataPoints.$inferSelect;
 
 export type InsertDataSource = z.infer<typeof insertDataSourceSchema>;
 export type DataSource = typeof dataSources.$inferSelect;
+
+export type InsertResearchLog = z.infer<typeof insertResearchLogSchema>;
+export type ResearchLog = typeof researchLogs.$inferSelect;

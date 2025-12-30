@@ -120,3 +120,23 @@ export async function seedDatabase(): Promise<{ message: string; analysisId: str
   if (!response.ok) throw new Error("Failed to seed database");
   return response.json();
 }
+
+// Research Logs API
+export interface ResearchLog {
+  id: string;
+  analysisId: string;
+  status: string;
+  prompt: string;
+  rawResponse: string | null;
+  extractedCount: number | null;
+  durationSeconds: number | null;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export async function getResearchLogs(): Promise<ResearchLog[]> {
+  const response = await fetch("/api/research-logs");
+  if (!response.ok) throw new Error("Failed to fetch research logs");
+  return response.json();
+}

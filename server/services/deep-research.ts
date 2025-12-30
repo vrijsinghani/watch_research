@@ -176,14 +176,22 @@ export async function researchWatch(
   apiKey: string
 ): Promise<DeepResearchResult> {
   const startTime = Date.now();
-  updateProgress(analysisId, "researching", 10, "Initializing Gemini Deep Research...");
+  updateProgress(analysisId, "researching", 10, "Initializing Chronos Research Engine...");
+
+  const prompt = buildResearchPrompt(brand, reference);
+  
+  // Create research log entry
+  const researchLog = await storage.createResearchLog({
+    analysisId,
+    status: "started",
+    prompt,
+  });
 
   try {
     // Initialize Gemini client
     const genai = new GoogleGenAI({ apiKey });
     
-    const prompt = buildResearchPrompt(brand, reference);
-    updateProgress(analysisId, "researching", 20, "Sending research request to Gemini...");
+    updateProgress(analysisId, "researching", 20, "Gathering market intelligence...");
 
     // Execute research using Gemini
     // Note: The actual Deep Research API uses interactions.create() 
@@ -256,6 +264,15 @@ export async function researchWatch(
       volatility: marketInsights.volatility || "Medium"
     });
 
+    // Update research log with results
+    await storage.updateResearchLog(researchLog.id, {
+      status: "completed",
+      rawResponse: rawReport.substring(0, 100000), // Limit size
+      extractedCount: cleanedSales.length,
+      durationSeconds: duration,
+      completedAt: new Date(),
+    });
+
     return {
       interactionId: `research-${analysisId}-${Date.now()}`,
       status: "completed",
@@ -271,6 +288,15 @@ export async function researchWatch(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     updateProgress(analysisId, "failed", 0, `Research failed: ${errorMessage}`);
+    
+    // Update research log with error
+    await storage.updateResearchLog(researchLog.id, {
+      status: "failed",
+      errorMessage,
+      durationSeconds: (Date.now() - startTime) / 1000,
+      completedAt: new Date(),
+    });
+    
     throw error;
   }
 }

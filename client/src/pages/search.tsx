@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import Layout from "@/components/layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search as SearchIcon, Loader2, Bot, Sparkles } from "lucide-react";
+import { Search as SearchIcon, Loader2, Activity, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { createAnalysis, triggerResearch, parseWatchQuery } from "@/lib/api";
@@ -34,7 +34,7 @@ export default function SearchPage() {
         description: query,
       });
       
-      setStatus("Initiating Deep Research Agent...");
+      setStatus("Initiating Chronos Research...");
       await triggerResearch(analysis.id);
       
       toast({
@@ -133,7 +133,7 @@ export default function SearchPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center justify-center gap-2 text-sm text-primary"
               >
-                <Bot className="w-4 h-4 animate-pulse" />
+                <Activity className="w-4 h-4 animate-pulse" />
                 <span>{status}</span>
               </motion.div>
             )}
@@ -181,11 +181,11 @@ export default function SearchPage() {
             className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-lg max-w-md mx-auto"
           >
             <div className="flex items-start gap-3">
-              <Bot className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <Activity className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div className="text-left text-sm">
-                <p className="font-medium text-foreground">Powered by Gemini Deep Research</p>
+                <p className="font-medium text-foreground">Chronos Deep Research</p>
                 <p className="text-muted-foreground mt-1">
-                  Our AI agent searches auction houses, marketplaces, and dealers to compile comprehensive market intelligence in 2-10 minutes.
+                  Our research engine searches auction houses, marketplaces, and dealers to compile comprehensive market intelligence in 2-10 minutes.
                 </p>
               </div>
             </div>

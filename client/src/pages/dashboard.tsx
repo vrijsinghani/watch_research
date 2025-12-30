@@ -13,7 +13,6 @@ import {
   Download, 
   Share2, 
   Activity, 
-  Bot, 
   Gavel, 
   Store,
   Globe,
@@ -23,7 +22,8 @@ import {
   Search,
   RefreshCw,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAnalysis, getAnalyses, getMarketDataPoints, getResearchProgress, type ResearchProgress } from "@/lib/api";
@@ -129,7 +129,7 @@ export default function Dashboard() {
         <div className="flex flex-col items-center justify-center min-h-screen gap-8 max-w-lg mx-auto text-center p-6">
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-              <Bot className="w-12 h-12 text-primary" />
+              <Activity className="w-12 h-12 text-primary" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-primary flex items-center justify-center">
               <RefreshCw className="w-4 h-4 text-primary animate-spin" />
@@ -142,7 +142,7 @@ export default function Dashboard() {
             </h2>
             <p className="text-muted-foreground">
               {analysis.reference !== "N/A" && `Ref. ${analysis.reference} • `}
-              Deep Research Agent is gathering market intelligence
+              Chronos is gathering market intelligence
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export default function Dashboard() {
                 </Badge>
               ) : (
                 <Badge variant="outline" className="border-primary/50 text-primary uppercase tracking-widest text-[10px] flex items-center gap-1">
-                  <Bot className="w-3 h-3" /> Pending Data
+                  <Activity className="w-3 h-3" /> Pending Data
                 </Badge>
               )}
               {analysis.liquidityScore && (
@@ -261,10 +261,10 @@ export default function Dashboard() {
         {!hasData && (
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Bot className="w-12 h-12 text-primary mb-4" />
+              <Activity className="w-12 h-12 text-primary mb-4" />
               <h3 className="text-lg font-display font-bold mb-2">Awaiting Research Data</h3>
               <p className="text-muted-foreground max-w-md">
-                No market data has been collected yet. The Deep Research Agent will populate this dashboard
+                No market data has been collected yet. Chronos will populate this dashboard
                 with comprehensive pricing intelligence once research is complete.
               </p>
             </CardContent>
@@ -276,7 +276,7 @@ export default function Dashboard() {
           <>
             <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Bot className="w-32 h-32 rotate-12" />
+                <TrendingUp className="w-32 h-32 rotate-12" />
               </div>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl font-display">

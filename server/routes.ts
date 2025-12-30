@@ -150,6 +150,16 @@ export async function registerRoutes(
     }
   });
 
+  // Research Logs Routes
+  app.get("/api/research-logs", async (req, res) => {
+    try {
+      const logs = await storage.getAllResearchLogs();
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch research logs" });
+    }
+  });
+
   // ============================================================
   // DEEP RESEARCH ENDPOINTS
   // ============================================================

@@ -5,9 +5,12 @@ import {
   type InsertMarketDataPoint,
   type DataSource,
   type InsertDataSource,
+  type ResearchLog,
+  type InsertResearchLog,
   watchAnalyses,
   marketDataPoints,
   dataSources,
+  researchLogs,
 } from "@shared/schema";
 import { db } from "../drizzle/db";
 import { eq, desc } from "drizzle-orm";
@@ -32,6 +35,12 @@ export interface IStorage {
   createDataSource(data: InsertDataSource): Promise<DataSource>;
   updateDataSource(id: string, data: Partial<InsertDataSource>): Promise<DataSource | undefined>;
   toggleDataSource(id: string, isEnabled: boolean): Promise<DataSource | undefined>;
+
+  // Research Logs
+  getAllResearchLogs(): Promise<ResearchLog[]>;
+  getResearchLogsByAnalysis(analysisId: string): Promise<ResearchLog[]>;
+  createResearchLog(data: InsertResearchLog): Promise<ResearchLog>;
+  updateResearchLog(id: string, data: Partial<InsertResearchLog>): Promise<ResearchLog | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -114,6 +123,33 @@ export class DatabaseStorage implements IStorage {
 
   async toggleDataSource(id: string, isEnabled: boolean): Promise<DataSource | undefined> {
     return this.updateDataSource(id, { isEnabled });
+  }
+
+  // Research Logs
+  async getAllResearchLogs(): Promise<ResearchLog[]> {
+    return await db.select().from(researchLogs).orderBy(desc(researchLogs.startedAt));
+  }
+
+  async getResearchLogsByAnalysis(analysisId: string): Promise<ResearchLog[]> {
+    return await db
+      .select()
+      .from(researchLogs)
+      .where(eq(researchLogs.analysisId, analysisId))
+      .orderBy(desc(researchLogs.startedAt));
+  }
+
+  async createResearchLog(data: InsertResearchLog): Promise<ResearchLog> {
+    const [log] = await db.insert(researchLogs).values(data).returning();
+    return log;
+  }
+
+  async updateResearchLog(id: string, data: Partial<InsertResearchLog>): Promise<ResearchLog | undefined> {
+    const [updated] = await db
+      .update(researchLogs)
+      .set(data)
+      .where(eq(researchLogs.id, id))
+      .returning();
+    return updated;
   }
 }
 
